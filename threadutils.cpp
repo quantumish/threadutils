@@ -4,32 +4,36 @@
 #include <cstdio>
 #include <cstdint>
 #include <stdexcept>
+#include <thread>
 
+template <class T>
 struct Node {
-    uint64_t val;
+    T val;
     Node* next;
 };
 
+template <class T>
 class List {    
-    Node root;
+    Node<T> root;
     pthread_mutex_t lock;
     pthread_mutex_t alock;
-
+public:
     List();
-    List(uint64_t init);
+    List(T init);
 
-    void write(int index, uint64_t newval);
-    uint64_t read(int index);
-    void append(uint64_t newval);    
+    void write(int index, T newval);
+    T read(int index);
+    void append(T newval);    
 };
 
-List::List() :root{0, nullptr} {}
-List::List(uint64_t init) :root{init, nullptr} {}
+template <class T>
+List<T>::List(T init) :root{init, nullptr} {}
 
-void List::write(int index, uint64_t newval)
+template <class T>
+void List<T>::write(int index, T newval)
 {
     pthread_mutex_lock(&lock);
-    Node* r = &root;
+    Node<T>* r = &root;
     for (int i = 0; i < index; i++) {
         if (r == nullptr) throw std::out_of_range("List index is out of range");
         r = r->next;
@@ -39,10 +43,11 @@ void List::write(int index, uint64_t newval)
     printf("Wrote index %d\n", index);
 }
 
-uint64_t List::read(int index)
+template <class T>
+T List<T>::read(int index)
 {
     pthread_mutex_lock(&lock);
-    Node* r = &root;
+    Node<T>* r = &root;
     for (int i = 0; i < index; i++) {
         if (r == nullptr) throw std::out_of_range("List index is out of range");
         r = r->next;
@@ -52,12 +57,13 @@ uint64_t List::read(int index)
     return r->val;
 }
 
-void List::append(uint64_t newval)
+template <class T>
+void List<T>::append(T newval)
 {
     pthread_mutex_lock(&alock);
-    Node* r = &root;
+    Node<T>* r = &root;
     for (int i = 0; r->next != NULL; i++) r = r->next;
-    Node* next = new Node;
+    Node<T>* next = new Node<T>;
     next->val = newval;
     next->next = nullptr;
     r->next = next;
@@ -65,5 +71,14 @@ void List::append(uint64_t newval)
 }
 
 int main()
-{    
+{
+    List<uint64_t> list{1};
+    list.append(12);
+    list.append(14);
+    std::thread t1(&List<uint64_t>::write, &list, 1, 23);
+    std::thread t2(&List<uint64_t>::write, &list, 1, 24);
+    std::thread t3(&List<uint64_t>::read, &list, 1);
+    t1.join();
+    t2.join();
+    t3.join();
 }
