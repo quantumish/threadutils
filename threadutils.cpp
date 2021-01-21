@@ -6,6 +6,29 @@
 #include <stdexcept>
 #include <thread>
 #include <iostream>
+#include <atomic>
+
+class semaphore {
+    int capacity;
+    std::atomic<int> value;
+public:
+    semaphore(int);
+    void acquire();
+    void release();    
+};
+
+semaphore::semaphore(int c) :capacity(c) {}
+
+void semaphore::aquire()
+{
+    while (value >= capacity);
+    value++;
+}
+
+void semaphore::release()
+{
+    value--;
+}
 
 template <class T>
 struct Node {
@@ -17,6 +40,7 @@ template <class T>
 class List {    
     Node<T> root;
     pthread_mutex_t lock;
+    semaphore s;
     pthread_mutex_t alock;
 public:
     List();
@@ -34,6 +58,7 @@ List<T>::List(T init) :root{init, nullptr} {}
 template <class T>
 T& List<T>::operator[](int index)
 {
+    
     // pthread_mutex_lock(&lock);
     Node<T>* r = &root;
     for (int i = 0; i < index; i++) {
