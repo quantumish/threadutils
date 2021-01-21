@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <stdexcept>
 #include <thread>
+#include <iostream>
 
 template <class T>
 struct Node {
@@ -19,16 +20,37 @@ class List {
     pthread_mutex_t alock;
 public:
     List();
-    List(T init);
-
+    List(T init);    
+    T& operator[](int index);
+    
     void write(int index, T newval);
     T read(int index);
-    void append(T newval);    
+    void append(T newval);
 };
 
 template <class T>
 List<T>::List(T init) :root{init, nullptr} {}
 
+template <class T>
+T& List<T>::operator[](int index)
+{
+    // pthread_mutex_lock(&lock);
+    Node<T>* r = &root;
+    for (int i = 0; i < index; i++) {
+        if (r == nullptr) throw std::out_of_range("List index is out of range");
+        r = r->next;
+    }
+    // pthread_mutex_unlock(&lock);
+    return r->val;
+}
+
+template <class T>
+T List<T>::read(int index)
+{
+    std::cout << "Read index " << index << " and got " << operator[](index) << "\n";
+    return operator[](index);
+}
+    
 template <class T>
 void List<T>::write(int index, T newval)
 {
@@ -41,20 +63,6 @@ void List<T>::write(int index, T newval)
     r->val=newval;
     pthread_mutex_unlock(&lock);
     printf("Wrote index %d\n", index);
-}
-
-template <class T>
-T List<T>::read(int index)
-{
-    pthread_mutex_lock(&lock);
-    Node<T>* r = &root;
-    for (int i = 0; i < index; i++) {
-        if (r == nullptr) throw std::out_of_range("List index is out of range");
-        r = r->next;
-    }
-    pthread_mutex_unlock(&lock);
-    printf("Read index %d of %p and got %llu\n", index, &root, r->val);
-    return r->val;
 }
 
 template <class T>
