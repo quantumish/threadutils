@@ -7,21 +7,27 @@
 #include <thread>
 #include <iostream>
 #include <atomic>
+#include <queue>
 
 class semaphore {
     int capacity;
     std::atomic<int> value;
+    std::queue<std::thread::id> wlist;
 public:
     semaphore(int);
     void acquire();
     void release();    
 };
 
-semaphore::semaphore(int c) :capacity(c) {}
+semaphore::semaphore(int c) :capacity(c), value(0) {}
 
-void semaphore::aquire()
+void semaphore::acquire()
 {
-    while (value >= capacity);
+    if (value >= capacity) {
+        wlist.push(std::this_thread::get_id());
+        while (wlist.front() != std::this_thread::get_id() || value>=capacity);
+    }
+    wlist.pop();
     value++;
 }
 
@@ -31,15 +37,13 @@ void semaphore::release()
 }
 
 template <class T>
-struct Node {
-    T val;
-    Node* next;
-};
-
-template <class T>
-class List {    
-    Node<T> root;
-    pthread_mutex_t lock;
+class List {
+    struct Node {
+        T val;
+        Node* next;
+    };
+    Node root;
+    //pthread_mutex_t lock;
     semaphore s;
     pthread_mutex_t alock;
 public:
@@ -53,18 +57,19 @@ public:
 };
 
 template <class T>
-List<T>::List(T init) :root{init, nullptr} {}
+List<T>::List(T init) :root{init, nullptr}, s(2) {}
 
 template <class T>
 T& List<T>::operator[](int index)
 {
-    
+    s.acquire();
     // pthread_mutex_lock(&lock);
-    Node<T>* r = &root;
+    Node* r = &root;
     for (int i = 0; i < index; i++) {
         if (r == nullptr) throw std::out_of_range("List index is out of range");
         r = r->next;
     }
+    s.release();
     // pthread_mutex_unlock(&lock);
     return r->val;
 }
@@ -79,14 +84,16 @@ T List<T>::read(int index)
 template <class T>
 void List<T>::write(int index, T newval)
 {
-    pthread_mutex_lock(&lock);
-    Node<T>* r = &root;
+    s.acquire();
+    //pthread_mutex_lock(&lock);
+    Node* r = &root;
     for (int i = 0; i < index; i++) {
         if (r == nullptr) throw std::out_of_range("List index is out of range");
         r = r->next;
     }
     r->val=newval;
-    pthread_mutex_unlock(&lock);
+    s.release();
+    //pthread_mutex_unlock(&lock);
     printf("Wrote index %d\n", index);
 }
 
@@ -94,9 +101,9 @@ template <class T>
 void List<T>::append(T newval)
 {
     pthread_mutex_lock(&alock);
-    Node<T>* r = &root;
+    Node* r = &root;
     for (int i = 0; r->next != NULL; i++) r = r->next;
-    Node<T>* next = new Node<T>;
+    Node* next = new Node;
     next->val = newval;
     next->next = nullptr;
     r->next = next;
