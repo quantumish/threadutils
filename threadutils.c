@@ -19,21 +19,36 @@ struct info {
     uint64_t val;
 };
 
-void list_write(void* args)
+void* list_write(void* args)
 {
     pthread_mutex_lock(&lock);
-    for (int i = 0; i <= index; i++) root = root->next;
-    root->val=new;
+    struct info* a = (struct info*) args;
+    printf("%p %d %llu\n", a->root, a->index, a->val);    
+    Node* root = a->root;
+    for (int i = 0; i < a->index; i++) root = root->next;
+    root->val=a->val;
     pthread_mutex_unlock(&lock);
-    printf("Wrote index %d of %p", index, root);
+    printf("Wrote index %d of %p\n", a->index, a->root);
 }
 
-void list_append(void* args)
+void* list_read(void* args)
+{
+    pthread_mutex_lock(&lock);
+    struct info* a = (struct info*) args;
+    Node* root = a->root;
+    for (int i = 0; i < a->index; i++) root = root->next;    
+    printf("Read index %d of %p and got %llu\n", a->index, a->root, root->val);
+    pthread_mutex_unlock(&lock);
+}
+
+void* list_append(void* args)
 {
     pthread_mutex_lock(&alock);
+    struct info* a = (struct info*) args;
+    Node* root = a->root;
     for (int i = 0; root->next != NULL; i++) root = root->next;
     Node* next = (Node*)malloc(sizeof(Node));
-    next->val = new;
+    next->val = a->val;
     next->next = NULL;
     root->next = next;   
     pthread_mutex_unlock(&alock);
@@ -41,18 +56,15 @@ void list_append(void* args)
 
 int main()
 {
-    Node root = {23, NULL};
-    struct info a1 = {&root, NULL, 42};
-    struct info a2 = {&root, NULL, 53};
-    struct info a3 = {&root, NULL, 12};
-    list_append((void*)&a1);   
-    list_append((void*)&a2);
-    list_append((void*)&a3);
+    Node* root = (Node*)malloc(sizeof(Node));
     pthread_t writer1;
     pthread_t writer2;
-    struct info args = {&root, 1, 17};
-    pthread_create(&writer1, NULL, list_write, (void*)&args);
-    pthread_create(&writer2, NULL, list_write, (void*)&args);
+    struct info* args = (struct info*)malloc(sizeof(struct info));
+    args->root = root;
+    args->index = 0;
+    args->val = 17;
+    pthread_create(&writer1, NULL, list_write, (void*)args);
+    pthread_create(&writer2, NULL, list_read, (void*)args);
     pthread_join(writer1, NULL);
     pthread_join(writer2, NULL);
 }
