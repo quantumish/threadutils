@@ -35,6 +35,27 @@ void semaphore::release()
     value--;
 }
 
+class spinlock {
+    std::atomic_flag latch;
+    std::thread::id owner;
+public:
+    spinlock();
+    void lock();
+    void unlock();
+};
+
+spinlock::spinlock() :latch(false) {}
+
+void spinlock::lock() {
+    owner = std::this_thread::get_id();
+    while(latch.test_and_set(std::memory_order_acquire));
+}
+
+void spinlock::unlock() {
+    if (owner != std::this_thread::get_id()) return;
+    latch.clear(std::memory_order_release);
+}
+
 template <class T>
 class List {
     struct Node {
@@ -44,7 +65,6 @@ class List {
     Node root;
     std::mutex lock;
     std::mutex alock;
-    semaphore s;    
 public:
     List();
     List(T init);
@@ -57,7 +77,7 @@ public:
 };
 
 template <class T>
-List<T>::List(T init) :root{init, nullptr}, s(2) {}
+List<T>::List(T init) :root{init, nullptr} {}
 
 template <class T>
 List<T>::~List()
@@ -93,14 +113,13 @@ T List<T>::read(int index)
 template <class T>
 void List<T>::write(int index, T newval)
 {
-    lock.lock();   
+    lock.lock();
     Node* r = &root;
     for (int i = 0; i < index; i++) {
         if (r == nullptr) throw std::out_of_range("List index is out of range");
         r = r->next;
     }
     r->val=newval;
-    s.release();
     lock.unlock();
     printf("Wrote index %d\n", index);
 }
