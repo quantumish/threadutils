@@ -10,17 +10,18 @@ template <class T>
 class list {
     struct Node {
         T val;
-        Node* next;        
+        Node* next;
     };
     Node root;
-    std::mutex lock;
-    std::mutex alock;
+    mutable std::mutex lock;
+    mutable std::mutex alock;
 public:
     list();
     list(T init);
     ~list();
     T& operator[](int index);
-    
+
+    int length() const noexcept;
     void write(int index, T newval);
     T read(int index);
     void append(T newval);
@@ -38,6 +39,18 @@ list<T>::~list()
         r = r->next;
         delete old;
     }
+}
+
+template <class T>
+int list<T>::length() const noexcept
+{
+    lock.lock();
+    if (&root == nullptr) return 0;
+    int length = 0;
+    for (Node* r = const_cast<Node*>(&root); r->next != NULL; r=r->next) length++;
+    std::cout << "length is " << length << "\n";
+    lock.unlock();
+    return length;
 }
 
 template <class T>
@@ -59,7 +72,7 @@ T list<T>::read(int index)
 {
     return operator[](index);
 }
-    
+
 template <class T>
 void list<T>::write(int index, T newval)
 {
@@ -84,6 +97,6 @@ void list<T>::append(T newval)
     next->val = newval;
     next->next = nullptr;
     r->next = next;
-    alock.unlock();    
+    alock.unlock();
 }
 }
