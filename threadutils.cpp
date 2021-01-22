@@ -1,5 +1,3 @@
-
-#include <pthread.h>
 #include <cstdlib>
 #include <cstdio>
 #include <cstdint>
@@ -8,6 +6,7 @@
 #include <iostream>
 #include <atomic>
 #include <queue>
+#include <mutex>
 
 class semaphore {
     int capacity;
@@ -40,15 +39,16 @@ template <class T>
 class List {
     struct Node {
         T val;
-        Node* next;
+        Node* next;        
     };
     Node root;
-    //pthread_mutex_t lock;
-    semaphore s;
-    pthread_mutex_t alock;
+    std::mutex lock;
+    std::mutex alock;
+    semaphore s;    
 public:
     List();
-    List(T init);    
+    List(T init);
+    ~List();
     T& operator[](int index);
     
     void write(int index, T newval);
@@ -60,17 +60,26 @@ template <class T>
 List<T>::List(T init) :root{init, nullptr}, s(2) {}
 
 template <class T>
+List<T>::~List()
+{
+    Node* r = root.next;
+    for (int i = 0; r->next != NULL; i++) {
+        Node* old = r;
+        r = r->next;
+        delete old;
+    }
+}
+
+template <class T>
 T& List<T>::operator[](int index)
 {
-    s.acquire();
-    // pthread_mutex_lock(&lock);
+    lock.lock();
     Node* r = &root;
     for (int i = 0; i < index; i++) {
         if (r == nullptr) throw std::out_of_range("List index is out of range");
         r = r->next;
     }
-    s.release();
-    // pthread_mutex_unlock(&lock);
+    lock.unlock();    
     return r->val;
 }
 
@@ -84,8 +93,7 @@ T List<T>::read(int index)
 template <class T>
 void List<T>::write(int index, T newval)
 {
-    s.acquire();
-    //pthread_mutex_lock(&lock);
+    lock.lock();   
     Node* r = &root;
     for (int i = 0; i < index; i++) {
         if (r == nullptr) throw std::out_of_range("List index is out of range");
@@ -93,21 +101,21 @@ void List<T>::write(int index, T newval)
     }
     r->val=newval;
     s.release();
-    //pthread_mutex_unlock(&lock);
+    lock.unlock();
     printf("Wrote index %d\n", index);
 }
 
 template <class T>
 void List<T>::append(T newval)
 {
-    pthread_mutex_lock(&alock);
+    alock.lock();
     Node* r = &root;
     for (int i = 0; r->next != NULL; i++) r = r->next;
     Node* next = new Node;
     next->val = newval;
     next->next = nullptr;
     r->next = next;
-    pthread_mutex_unlock(&alock);
+    alock.unlock();    
 }
 
 int main()
