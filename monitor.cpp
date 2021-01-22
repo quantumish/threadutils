@@ -1,46 +1,44 @@
 #include <concepts>
+#include <functional>
 #include "locks.hpp"
-#include <eigen3/Eigen/Dense>
 
-template <class T>
-concept operatable = requires(T a, T b) {
-    a+b;
-    a-b;
-    a/b;
-    a*b;
-    a&b;
-    a|b;    
-    a=b;
-    
-};
-
-template <operatable T> 
+template <class T> 
 class monitor {
     spinlock s;
-public:
     T val;
-    
+public:
+    // HACK No clue how this works
+    // Based off of https://stackoverflow.com/questions/12647217/making-a-c-class-a-monitor-in-the-concurrent-sense
+    template <class R, class ...Args>
+    R execute_function(std::function<R(T, Args...)> f, Args... args);
     monitor();
     monitor(T v);
     
 };
 
-template <operatable T> 
+template <class T> 
 monitor<T>::monitor() :val() {}
-template <operatable T> 
+template <class T> 
 monitor<T>::monitor(T v) :val(v) {}
 
-class Nothing
-{    
-    Nothing();
-};
-    
-Nothing::Nothing() {}
+template <class T>
+template <class R, class ...Args>
+R monitor<T>::execute_function(std::function<R(T, Args...)> f, Args... args)
+{
+    return f(val, args...);
+}
+
+void arbitary_function(char suffix, const char* w1, int w2, void* w3)
+{
+    std::cout << " " << w1 << " " << w2 << " " << w3 << " " << suffix << "\n";
+}
 
 int main()
 {
-    monitor<void*> a;
-    char b = 'b';
-    char c = 'c';
-    std::cout << b/c << "\n";
+    monitor<char> a {'!'};
+    const char* c1 = "wtf this is magic";
+    int c2 = 3432;
+    void* c3 = (void*) 0x432f34;
+    std::function<void(char, const char*, int, void*)> f = arbitrary_function;
+    a.execute_function(f, c1, c2, c3);
 }
