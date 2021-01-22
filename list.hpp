@@ -4,8 +4,10 @@
 #include <mutex>
 #include <iostream>
 
+namespace thd {
+
 template <class T>
-class List {
+class list {
     struct Node {
         T val;
         Node* next;        
@@ -14,9 +16,9 @@ class List {
     std::mutex lock;
     std::mutex alock;
 public:
-    List();
-    List(T init);
-    ~List();
+    list();
+    list(T init);
+    ~list();
     T& operator[](int index);
     
     void write(int index, T newval);
@@ -25,10 +27,10 @@ public:
 };
 
 template <class T>
-List<T>::List(T init) :root{init, nullptr} {}
+list<T>::list(T init) :root{init, nullptr} {}
 
 template <class T>
-List<T>::~List()
+list<T>::~list()
 {
     Node* r = root.next;
     for (int i = 0; r->next != NULL; i++) {
@@ -39,12 +41,12 @@ List<T>::~List()
 }
 
 template <class T>
-T& List<T>::operator[](int index)
+T& list<T>::operator[](int index)
 {
     lock.lock();
     Node* r = &root;
     for (int i = 0; i < index; i++) {
-        if (r == nullptr) throw std::out_of_range("List index is out of range");
+        if (r == nullptr) throw std::out_of_range("list index is out of range");
         r = r->next;
     }
     std::cout << "Read index " << index << " and got " << r->val << "\n";
@@ -53,18 +55,18 @@ T& List<T>::operator[](int index)
 }
 
 template <class T>
-T List<T>::read(int index)
+T list<T>::read(int index)
 {
     return operator[](index);
 }
     
 template <class T>
-void List<T>::write(int index, T newval)
+void list<T>::write(int index, T newval)
 {
     lock.lock();
     Node* r = &root;
     for (int i = 0; i < index; i++) {
-        if (r == nullptr) throw std::out_of_range("List index is out of range");
+        if (r == nullptr) throw std::out_of_range("list index is out of range");
         r = r->next;
     }
     r->val=newval;
@@ -73,7 +75,7 @@ void List<T>::write(int index, T newval)
 }
 
 template <class T>
-void List<T>::append(T newval)
+void list<T>::append(T newval)
 {
     alock.lock();
     Node* r = &root;
@@ -83,4 +85,5 @@ void List<T>::append(T newval)
     next->next = nullptr;
     r->next = next;
     alock.unlock();    
+}
 }

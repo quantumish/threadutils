@@ -5,6 +5,8 @@
 #include <queue>
 #include <mutex>
 
+namespace thd {
+
 class semaphore {
     int capacity;
     std::atomic<int> value;
@@ -12,7 +14,7 @@ class semaphore {
 public:
     semaphore(int);
     void acquire();
-    void release();    
+    void release();
 };
 
 semaphore::semaphore(int c) :capacity(c), value(0) {}
@@ -68,7 +70,7 @@ shared_lock::shared_lock() :shared_latch(false), threads(0), spinlock() {}
 void shared_lock::s_lock()
 {
     std::thread::id o{};
-    while(latch.test_and_set(std::memory_order_acquire) && owner != o);    
+    while(latch.test_and_set(std::memory_order_acquire) && owner != o);
     owner=o;
     threads++;
 }
@@ -79,4 +81,19 @@ void shared_lock::s_unlock()
     if (threads==0) latch.clear();
 }
 
+class mandatory_lock : public spinlock {
+public:
+    mandatory_lock();
+    void lock();
+};
 
+mandatory_lock::mandatory_lock() :spinlock{} {}
+
+void mandatory_lock::lock()
+{
+    if (latch.test_and_set(std::memory_order_acquire)) {
+        throw std::runtime_error("Attempted to access code with mandatory lock");
+    }
+}
+
+}

@@ -3,6 +3,8 @@
 #include <eigen3/Eigen/Dense>
 #include "locks.hpp"
 
+namespace thd {
+
 template <class T> 
 class monitor {
     spinlock s;
@@ -43,6 +45,8 @@ R monitor<T>::execute_member(auto f, Args... args)
     return out;
 }
 
+}
+
 int arbitrary_function(char suffix, const char* w1, int w2, void* w3)
 {
     std::cout << w1 << " " << w2 << " " << w3 << " " << suffix << "\n";
@@ -51,7 +55,7 @@ int arbitrary_function(char suffix, const char* w1, int w2, void* w3)
 
 int main()
 {
-    monitor<Eigen::MatrixXf> a (Eigen::MatrixXf::Random(10,10));
+    thd::monitor<Eigen::MatrixXf> a (Eigen::MatrixXf::Random(10,10));
     // const char* c1 = "wtf this is magic";
     // int c2 = 3432;
     // void* c3 = (void*) 0x432f34;
