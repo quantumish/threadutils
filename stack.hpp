@@ -5,7 +5,6 @@
 
 template <class T>
 class stack {
-protected:
     struct Node {
         T val;
         Node* next;
@@ -17,7 +16,7 @@ protected:
     std::atomic<tagptr> head;
 public:
     stack();
-    void push(T value);
+    void push(T  value);
     void pop();
     T peek();
     T top();
@@ -63,17 +62,3 @@ T stack<T>::peek()
 
 template <class T>
 T stack<T>::top() {return peek();}
-
-// int main()
-// {
-//     stack<uint64_t> a;
-//     std::thread t1(&stack<uint64_t>::push, &a, 1);
-//     std::thread t2(&stack<uint64_t>::push, &a, 2);
-//     std::thread t3(&stack<uint64_t>::push, &a, 3);
-//     t1.join(); t2.join(); t3.join();
-//     std::cout << a.peek() << "\n";
-//     a.pop();
-//     std::cout << a.peek() << "\n";
-//     a.pop();
-//     std::cout << a.peek() << "\n";
-// }
