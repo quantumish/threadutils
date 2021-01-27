@@ -4,8 +4,33 @@
 #include <atomic>
 #include <queue>
 #include <mutex>
+#include <unistd.h>
+#include <linux/futex.h>
+#include <sys/syscall.h>
 
 namespace thd {
+
+class mutex {
+public:
+    uint32_t futex;
+    mutex();
+    void lock();
+    void unlock();
+};
+
+mutex::mutex() :futex{0} {};
+
+void mutex::lock()
+{
+    syscall(__NR_futex, &futex, FUTEX_WAIT, 1, NULL);
+    futex = 1;
+}
+
+void mutex::unlock()
+{
+    syscall(__NR_futex, &futex, FUTEX_WAKE, 1, NULL);
+    futex = 0;
+}
 
 class semaphore {
     int capacity;
