@@ -9,7 +9,11 @@
 
 template <class K, class V>
 class hashmap {
-    V* arr;
+    struct _entry {
+        K key;
+        V val;
+    };
+    _entry* arr;
     size_t size;
     void resize(size_t min);
     int keys;
@@ -24,7 +28,7 @@ public:
 
 template <class K, class V>
 hashmap<K,V>::hashmap(float l)
-    :arr{new V[TABLE_DEFAULT_SZ]()}, size{TABLE_DEFAULT_SZ}, keys{0}, collisions{0}, load_max{l} {}
+    :arr{new _entry[TABLE_DEFAULT_SZ]()}, size{TABLE_DEFAULT_SZ}, keys{0}, collisions{0}, load_max{l} {}
 
 template <class K, class V>
 void hashmap<K,V>::insert(K key, V val)
@@ -33,27 +37,28 @@ void hashmap<K,V>::insert(K key, V val)
     // std::cout << std::hash<K>{}(key) << " " << index << "\n";
     if (load_factor() >= load_max) resize(size*2 + 1);
     keys++;
-    if (arr[index] != 0) collisions++;
-    arr[index] = val;
+    if (arr[index].val != 0) collisions++;
+    arr[index].key = key;
+    arr[index].val = val;
 }
 
 template <class K, class V>
 V hashmap<K,V>::get(K key)
 {
     std::size_t index = std::hash<K>{}(key) & size;
-    return arr[index];
+    return arr[index].val;
 }
 
 template <class K, class V>
 void hashmap<K,V>::resize(size_t min)
 {
     //std::cout << "Resizing to " << min << " bytes" << "\n";
-    V* old = arr;
-    arr = new V[min]();
+    _entry* old = arr;
+    arr = new _entry[min];
     for (int i = 0; i < size; i++) {
-        arr[i] = old[i];
+        old[std::hash<K>{}(arr[i].key) & min] = arr[i];
     }
-    delete old;
+    // delete old;
     size = min;
 }
 
@@ -78,13 +83,13 @@ std::string gen_random(const int len) {
 
 int main(int argc, char** argv)
 {
-    hashmap<std::string, int> h(0.7);
+    hashmap<int, int> h(0.7);
     #define MAXNUM 14000
     uint64_t BIGNUM = std::stoll(argv[1], NULL, 10);
     for (int i = 0; i < BIGNUM; i++) {
-        std::string s = gen_random(10);
+        // std::string s = gen_random(10);
         // std::cout << s << "\n";
-        h.insert(s,rand()/(RAND_MAX/MAXNUM+1));
+        h.insert(rand()/(BIGNUM/MAXNUM+1),rand()/(RAND_MAX/MAXNUM+1));
     }
     std::cout << h.collisions << " " << (double)h.collisions / BIGNUM << "\n";
     // for (int i = 0; i < BIGNUM; i++) {
