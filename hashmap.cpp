@@ -13,23 +13,27 @@ class hashmap {
     size_t size;
     void resize(size_t min);
     int keys;
+    float load_max;
 public:
+    uint64_t collisions;
     float load_factor();
-    hashmap();
+    hashmap(float l = 0.75);
     void insert(K key, V val);
     V get(K key);
 };
 
 template <class K, class V>
-hashmap<K,V>::hashmap()
-    :arr{new V[TABLE_DEFAULT_SZ]}, size{TABLE_DEFAULT_SZ}, keys{0} {}
+hashmap<K,V>::hashmap(float l)
+    :arr{new V[TABLE_DEFAULT_SZ]()}, size{TABLE_DEFAULT_SZ}, keys{0}, collisions{0}, load_max{l} {}
 
 template <class K, class V>
 void hashmap<K,V>::insert(K key, V val)
 {
     std::size_t index = std::hash<K>{}(key) & size;
-    if (load_factor() >= 0.75) resize(size*2 + 1);
+    // std::cout << std::hash<K>{}(key) << " " << index << "\n";
+    if (load_factor() >= load_max) resize(size*2 + 1);
     keys++;
+    if (arr[index] != 0) collisions++;
     arr[index] = val;
 }
 
@@ -45,7 +49,7 @@ void hashmap<K,V>::resize(size_t min)
 {
     //std::cout << "Resizing to " << min << " bytes" << "\n";
     V* old = arr;
-    arr = new V[min];
+    arr = new V[min]();
     for (int i = 0; i < size; i++) {
         arr[i] = old[i];
     }
@@ -56,17 +60,34 @@ void hashmap<K,V>::resize(size_t min)
 template <class K, class V>
 float hashmap<K,V>::load_factor() {return (float)keys/size;}
 
+std::string gen_random(const int len) {
 
+    std::string tmp_s;
+    static const char alphanum[] =
+        "0123456789"
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        "abcdefghijklmnopqrstuvwxyz";
+    tmp_s.reserve(len);
+
+    for (int i = 0; i < len; ++i)
+        tmp_s += alphanum[rand() % (sizeof(alphanum) - 1)];
+
+    return tmp_s;
+
+}
 
 int main(int argc, char** argv)
 {
-    hashmap<int, int> h;
+    hashmap<std::string, int> h(0.7);
     #define MAXNUM 14000
     uint64_t BIGNUM = std::stoll(argv[1], NULL, 10);
     for (int i = 0; i < BIGNUM; i++) {
-        h.insert(i, rand() % MAXNUM + 1);
+        std::string s = gen_random(10);
+        // std::cout << s << "\n";
+        h.insert(s,rand()/(RAND_MAX/MAXNUM+1));
     }
-    for (int i = 0; i < BIGNUM; i++) {
-        h.get(i);
-    }
+    std::cout << h.collisions << " " << (double)h.collisions / BIGNUM << "\n";
+    // for (int i = 0; i < BIGNUM; i++) {
+    //     h.get(i);
+    // }
 }
