@@ -9,11 +9,8 @@
 
 template <class K, class V>
 class hashmap {
-    struct _entry {
-        K key;
-        V val;
-    };
-    _entry* arr;
+    K* karr;
+    V* arr;
     size_t size;
     void resize(size_t min);
     int keys;
@@ -28,37 +25,42 @@ public:
 
 template <class K, class V>
 hashmap<K,V>::hashmap(float l)
-    :arr{new _entry[TABLE_DEFAULT_SZ]()}, size{TABLE_DEFAULT_SZ}, keys{0}, collisions{0}, load_max{l} {}
+    :arr{new V[TABLE_DEFAULT_SZ]()}, /*karr{new K[TABLE_DEFAULT_SZ]}, */ size{TABLE_DEFAULT_SZ}, keys{0}, collisions{0}, load_max{l} {}
 
 template <class K, class V>
 void hashmap<K,V>::insert(K key, V val)
 {
     std::size_t index = std::hash<K>{}(key) & size;
-    // std::cout << std::hash<K>{}(key) << " " << index << "\n";
+    std::cout << std::hash<K>{}(key) << " " << index << "\n";
     if (load_factor() >= load_max) resize(size*2 + 1);
     keys++;
-    if (arr[index].val != 0) collisions++;
-    arr[index].key = key;
-    arr[index].val = val;
+    if (arr[index] != 0) collisions++;
+    karr[index] = key;
+    arr[index] = val;
 }
 
 template <class K, class V>
 V hashmap<K,V>::get(K key)
 {
     std::size_t index = std::hash<K>{}(key) & size;
-    return arr[index].val;
+    return arr[index];
 }
 
 template <class K, class V>
 void hashmap<K,V>::resize(size_t min)
 {
-    //std::cout << "Resizing to " << min << " bytes" << "\n";
-    _entry* old = arr;
-    arr = new _entry[min];
+    std::cout << "Resizing to " << min << " bytes" << "\n";
+    V* old = arr;
+    K* kold = karr;
+    arr = new V[min];
+    karr = new K[min];
     for (int i = 0; i < size; i++) {
-        old[std::hash<K>{}(arr[i].key) & min] = arr[i];
+        size_t rehash = std::hash<K>{}(kold[i]) & min;
+        arr[i] = old[i];
+        karr[rehash] = kold[i];
     }
-    // delete old;
+    delete old;
+    delete kold;
     size = min;
 }
 
@@ -83,13 +85,13 @@ std::string gen_random(const int len) {
 
 int main(int argc, char** argv)
 {
-    hashmap<int, int> h(0.7);
+    hashmap<std::string, int> h(0.7);
     #define MAXNUM 14000
     uint64_t BIGNUM = std::stoll(argv[1], NULL, 10);
     for (int i = 0; i < BIGNUM; i++) {
         // std::string s = gen_random(10);
         // std::cout << s << "\n";
-        h.insert(rand()/(BIGNUM/MAXNUM+1),rand()/(RAND_MAX/MAXNUM+1));
+        h.insert(gen_random(10),rand()/(RAND_MAX/MAXNUM+1));
     }
     std::cout << h.collisions << " " << (double)h.collisions / BIGNUM << "\n";
     // for (int i = 0; i < BIGNUM; i++) {
