@@ -3,7 +3,7 @@
 #include <iostream>
 #include <atomic>
 
-#define TABLE_DEFAULT_SZ 100
+#define TABLE_DEFAULT_SZ 127
 
 template <class K, class V>
 class hashmap {
@@ -25,9 +25,8 @@ hashmap<K,V>::hashmap()
 template <class K, class V>
 void hashmap<K,V>::insert(K key, V val)
 {
-    std::size_t index = std::hash<K>{}(key) % size;
-    std::cout << index << "\n";
-    // if (index >= 1000) resize(index);
+    std::size_t index = std::hash<K>{}(key) & size;
+    if (load_factor() >= 0.75) resize(size*2 + 1);
     keys++;
     arr[index].store(val);
 }
@@ -35,7 +34,7 @@ void hashmap<K,V>::insert(K key, V val)
 template <class K, class V>
 V hashmap<K,V>::get(K key)
 {
-    std::size_t index = std::hash<K>{}(key) % size;
+    std::size_t index = std::hash<K>{}(key) & 0xFFFF;
     // This may be naive to remove - assumes get() will only be called on existing keys
     // if (index >= 1000) resize(index);
     return arr[index].load();
@@ -44,8 +43,12 @@ V hashmap<K,V>::get(K key)
 template <class K, class V>
 void hashmap<K,V>::resize(size_t min)
 {
+    //std::cout << "Resizing to " << min << " bytes" << "\n";
     std::atomic<V>* old = arr;
     arr = new std::atomic<V>[min+1];
+    for (int i = 0; i < size; i++) {
+        arr[i].store(old[i].load());
+    }
     delete old;
     size = min+1;
 }
@@ -55,9 +58,13 @@ float hashmap<K,V>::load_factor() {return (float)keys/size;}
 
 int main()
 {
-    hashmap<std::string, int> h;
-    h.insert("abc", 2);
-    h.insert("abcd", 4);
-    h.insert("abce", 5);
-    std::cout << h.get("abc") << " " << h.get("abce") << " " << h.get("abcd") << " " << h.load_factor() << "\n";
+    hashmap<int, int> h;
+    #define MAXNUM 14000
+    #define BIGNUM 10000000
+    for (int i = 0; i < BIGNUM; i++) {
+        h.insert(i, rand() % MAXNUM);
+    }
+    for (int i = 0; i < BIGNUM; i++) {
+        h.get(rand() % BIGNUM);
+    }
 }
